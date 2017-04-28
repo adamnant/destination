@@ -104,7 +104,7 @@ while (tt < ntime):
                 # check if a new build is to be started (build size = 20)
                 if (build_n is 20):
                     build_n = 0
-                    build_start = np.array([build_start[0,0], tt])
+                    build_start = np.array([build_start[0], tt])
             
                 build_n = build_n + 1
             
@@ -156,9 +156,9 @@ while (tt < ntime):
             build_n = build_n + 1
             
             # check if we need to start a new build
-            if (build_n + 1 > 20):
+            if (build_n is 20):
                 build_n = 0
-                build_start = np.array([build_start[0,0], tt])
+                build_start = np.array([build_start[0], tt])
             
             # calculate the average quality value of the build - ie before a block is added
             if (build_n is 0): # first block
