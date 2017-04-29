@@ -104,7 +104,8 @@ while (tt < ntime):
                 # check if a new build is to be started (build size = 20)
                 if (build_n is 20):
                     build_n = 0
-                    build_start = np.array([build_start[0], tt])
+                    build_start = np.append(build_start, tt)
+                    #np.append(build_start,tt) #
             
                 build_n = build_n + 1
             
@@ -158,7 +159,7 @@ while (tt < ntime):
             # check if we need to start a new build
             if (build_n is 20):
                 build_n = 0
-                build_start = np.array([build_start[0], tt])
+                build_start = np.append(build_start, tt)
             
             # calculate the average quality value of the build - ie before a block is added
             if (build_n is 0): # first block
@@ -167,6 +168,7 @@ while (tt < ntime):
             else: # blocks 2 - number of blocks (20)
                 current_build_av = build_av[:,tt]
                 build_av[:,tt] = ((build_n-1)*current_build_av + block)/build_n
+                
             
             
             nbuild_bks = nbuild_bks + 1
@@ -175,9 +177,18 @@ while (tt < ntime):
                 
             build_cnt[:,tt] = build_cnt[:,tt] + 1
                        
-
     tt = tt + 1
 
 print "Crusher count: " + str(crush_count)
 #t = np.arange(0.,100,1)
-#plt.plot(t,upper[0,:])
+#plt.plot(t,build_av[0,:],'ro')
+
+build_start = np.append(build_start, ntime)
+for ii in range(1,np.shape(build_start)[0]-1):
+    indices = np.linspace(build_start[ii]+1,build_start[ii+1],10)
+    c = np.cumsum(build_bks[:,(ii-1)*nblocks+1 : (ii*nblocks)+1]  )
+    c = c[np.arange(1,21,2)]
+    ba = np.divide(c,np.arange(2,nblocks+1,2))
+    plt.plot(indices,target*np.ones(np.shape(indices)))
+    plt.plot(indices, ba)
+
