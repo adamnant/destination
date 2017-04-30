@@ -42,7 +42,7 @@ nbuild_bks = 0
 upper = np.zeros((1,ntime))
 lower = np.zeros((1,ntime))
 
-target = 58
+target = 58.5
 
 def get_digger_block_seq():
    # diggers = 
@@ -52,7 +52,7 @@ def get_digger_block_seq():
     return np.concatenate((
             np.random.rand(1,ntime) * 6 + 53,
             np.random.rand(1,ntime) * 6 + 56,
-            np.zeros((1,ntime)),
+            np.random.rand(1,ntime) * 6 + 55,
             np.zeros((1,ntime)),
             np.zeros((1,ntime))
             ))
@@ -189,13 +189,13 @@ for ii in range(1,np.shape(build_start)[0]-2):
     c = c[np.arange(1,20,2)]
     ba = np.divide(c,np.arange(2,nblocks+2,2))
     
-    ax1.plot(indices,target*np.ones(np.shape(indices)))
-    ax1.plot(indices, ba)
+    ax1.plot(indices,target*np.ones(np.shape(indices)),color = 'k')
+    ax1.plot(indices, ba, color = 'k')
 
 ax2.plot(np.transpose(piles_n))
 plt.legend(piles, ncol=4, loc='lower right', 
            bbox_to_anchor=[1.0, -0.5],borderaxespad=1)
-plt.subplots_adjust(left=0.17, bottom=0.17, right=0.95, top=0.95, wspace=0.17, hspace=0.17)
+plt.subplots_adjust(left=0.04, bottom=0.15, right=0.96, top=0.96, wspace=0.17, hspace=0.17)
 fig1.savefig("output.png", bbox_inches="tight")
 plt.show()
 
