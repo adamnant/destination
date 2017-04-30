@@ -7,24 +7,16 @@ Created on Fri Apr 28 10:22:45 2017
 import numpy as np 
 import matplotlib.pyplot as plt
 
-
-
-
 ndiggers = 5
 nblocks = 20
 # number of time periods
-ntime = 100
+ntime = 500
 
 # crusher model
-
 # blocks to crush per time period (one crusher)
 crusher_rate = 2 
 
-
-
-
 # stockpile model
-
 # thresholds for low and high grade
 low = 55
 high = 62
@@ -50,8 +42,7 @@ nbuild_bks = 0
 upper = np.zeros((1,ntime))
 lower = np.zeros((1,ntime))
 
-target = 58.5
-
+target = 58
 
 def get_digger_block_seq():
    # diggers = 
@@ -59,15 +50,14 @@ def get_digger_block_seq():
    #        52+6*rand(1,100); 
    #        zeros(3,100)];
     return np.concatenate((
-            np.random.rand(1,ntime) * 6 + 56,
             np.random.rand(1,ntime) * 6 + 53,
-            np.zeros(shape=(1,ntime)), 
-            np.zeros(shape=(1,ntime)), 
-            np.zeros(shape=(1,ntime)) 
+            np.random.rand(1,ntime) * 6 + 56,
+            np.zeros((1,ntime)),
+            np.zeros((1,ntime)),
+            np.zeros((1,ntime))
             ))
             
 # digger model
-
 # digger quality of blocks to mine in each time period ()
 diggers = get_digger_block_seq()
 # variable to store the diggers activity in each timestep in the sim
@@ -96,12 +86,10 @@ while (tt < ntime):
             # that would allow the target to be met
             if (build_n is 0 or build_n is nblocks):
                 upper[0,tt] = 100
-                lower[0,tt] = 0
-                
-            else: #TODO check calculation
+                lower[0,tt] = 0                
+            else: 
                 upper[0,tt] = nblocks*target - build_n*build_av[0,tt] - (nblocks - build_n-1)*piles[0]
-                lower[0,tt] = nblocks*target - build_n*build_av[0,tt] - (nblocks - build_n-1)*piles[npiles-1]
-            
+                lower[0,tt] = nblocks*target - build_n*build_av[0,tt] - (nblocks - build_n-1)*piles[npiles-1]            
             print "accept: "+str(lower[:,tt] ) +" \t"+str(upper[:,tt]) 
              
             
@@ -117,7 +105,7 @@ while (tt < ntime):
                     build_n = 0
                     build_start = np.append(build_start, tt)
                     #np.append(build_start,tt) #
-            
+
                 build_n = build_n + 1
                 
                 # calculate the average quality value of the build - ie before a block is added
@@ -185,19 +173,32 @@ while (tt < ntime):
                 
     tt = tt + 1
 
-print "Crushed blocks count: " + str(crush_count)
+print "Digger blocks to build count: " + str(crush_count)
 #t = np.arange(0.,100,1)
 #plt.plot(t,build_av[0,:],'ro')
 
 build_start = np.append(build_start, ntime)
+
+fig1 = plt.figure()
+ax1 = fig1.add_subplot(211)
+ax2 = fig1.add_subplot(212)
+
 for ii in range(1,np.shape(build_start)[0]-2):
     indices = np.linspace(build_start[ii],build_start[ii+1]-1,10)
     c = np.cumsum(build_bks[:,(ii-1)*nblocks+1 : (ii*nblocks)+1]  )
     c = c[np.arange(1,20,2)]
     ba = np.divide(c,np.arange(2,nblocks+2,2))
     
-    plt.plot(indices,target*np.ones(np.shape(indices)))
-    plt.plot(indices, ba)
+    ax1.plot(indices,target*np.ones(np.shape(indices)))
+    ax1.plot(indices, ba)
 
-    
+ax2.plot(np.transpose(piles_n))
+plt.legend(piles, ncol=4, loc='lower right', 
+           bbox_to_anchor=[1.0, -0.5],borderaxespad=1)
+plt.subplots_adjust(left=0.17, bottom=0.17, right=0.95, top=0.95, wspace=0.17, hspace=0.17)
+fig1.savefig("output.png", bbox_inches="tight")
+plt.show()
+
+
+#np.savetxt("stockpiles.csv", piles_n, delimiter=",",fmt='%i')
 
