@@ -7,18 +7,6 @@ Created on Fri Apr 28 10:22:45 2017
 import numpy as np 
 import matplotlib.pyplot as plt
 
-def get_digger_block_seq():
-   # diggers = 
-   # ret = [56+6*rand(1,100); 
-   #        52+6*rand(1,100); 
-   #        zeros(3,100)];
-    return np.concatenate((
-            np.random.rand(1,100) * 6 + 53,
-            np.random.rand(1,100) * 6 + 56,
-            np.zeros(shape=(1,100)), 
-            np.zeros(shape=(1,100)), 
-            np.zeros(shape=(1,100)) 
-            ))
 
 
 
@@ -32,12 +20,7 @@ ntime = 100
 # blocks to crush per time period (one crusher)
 crusher_rate = 2 
 
-# digger model
 
-# digger quality of blocks to mine in each time period ()
-diggers = get_digger_block_seq()
-# variable to store the diggers activity in each timestep in the sim
-dig_var = np.zeros((ndiggers,ntime))
 
 
 # stockpile model
@@ -67,7 +50,28 @@ nbuild_bks = 0
 upper = np.zeros((1,ntime))
 lower = np.zeros((1,ntime))
 
-target = 58
+target = 58.5
+
+
+def get_digger_block_seq():
+   # diggers = 
+   # ret = [56+6*rand(1,100); 
+   #        52+6*rand(1,100); 
+   #        zeros(3,100)];
+    return np.concatenate((
+            np.random.rand(1,ntime) * 6 + 56,
+            np.random.rand(1,ntime) * 6 + 53,
+            np.zeros(shape=(1,ntime)), 
+            np.zeros(shape=(1,ntime)), 
+            np.zeros(shape=(1,ntime)) 
+            ))
+            
+# digger model
+
+# digger quality of blocks to mine in each time period ()
+diggers = get_digger_block_seq()
+# variable to store the diggers activity in each timestep in the sim
+dig_var = np.zeros((ndiggers,ntime))
 
 tt = 0
 crush_count = 0
@@ -194,5 +198,6 @@ for ii in range(1,np.shape(build_start)[0]-2):
     
     plt.plot(indices,target*np.ones(np.shape(indices)))
     plt.plot(indices, ba)
+
     
 
