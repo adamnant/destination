@@ -13,7 +13,7 @@ def get_digger_block_seq():
    #        52+6*rand(1,100); 
    #        zeros(3,100)];
     return np.concatenate((
-            np.random.rand(1,100) * 6 + 52,
+            np.random.rand(1,100) * 6 + 53,
             np.random.rand(1,100) * 6 + 56,
             np.zeros(shape=(1,100)), 
             np.zeros(shape=(1,100)), 
@@ -83,7 +83,7 @@ while (tt < ntime):
         
         block = diggers[jj,tt]
         
-        print "digger: "+str(jj) +"\t" + "block Q: "+ str(block)
+        print "digger: "+str(jj) +"\t" + "block Q: "+ str(block) 
         
         # if not waste
         if(block >= low):
@@ -91,37 +91,44 @@ while (tt < ntime):
             # calculate lower and upper threshold for selecting a block for the build
             # that would allow the target to be met
             if (build_n is 0 or build_n is nblocks):
-                upper[:,tt] = 100
-                lower[:,tt] = 0
-            else: 
-                upper[:,tt] = nblocks*target - build_n*build_av[:,tt] - (nblocks - build_n-1)*piles[0]
-                lower[:,tt] = nblocks*target - build_n*build_av[:,tt] - (nblocks - build_n-1)*piles[npiles-1]
-        
-            # Decide whether to send to a stockpile or to the crusher
+                upper[0,tt] = 100
+                lower[0,tt] = 0
+                
+            else: #TODO check calculation
+                upper[0,tt] = nblocks*target - build_n*build_av[0,tt] - (nblocks - build_n-1)*piles[0]
+                lower[0,tt] = nblocks*target - build_n*build_av[0,tt] - (nblocks - build_n-1)*piles[npiles-1]
+            
+            print "accept: "+str(lower[:,tt] ) +" \t"+str(upper[:,tt]) 
+             
+            
+            # Decide whether to send to a stockpile or to the crusher            
             if (block >= lower[:,tt] and block <= upper[:,tt]) : # send to crusher (build)                                  
                 print "send to crusher"
+                print "build_n: "+str(build_n)                
+                
                 crush_count += 1
+
                 # check if a new build is to be started (build size = 20)
-                if (build_n is 20):
+                if (build_n is nblocks):
                     build_n = 0
                     build_start = np.append(build_start, tt)
                     #np.append(build_start,tt) #
             
                 build_n = build_n + 1
-            
-                # calculate the average quality value of the build - ie before a block is added
-                if (build_n is 0): # first block
-                    build_av[:,tt] = block
                 
+                # calculate the average quality value of the build - ie before a block is added
+                if (build_n is 1): # first block
+                    build_av[0,tt] = block              
                 else: # blocks 2 - number of blocks (20)
-                    current_build_av = build_av[:,tt]
-                    build_av[:,tt] = ((build_n-1)*current_build_av + block)/build_n
+                    current_build_av = build_av[0,tt]
+                    build_av[0,tt] = ((build_n-1)*current_build_av + block)/build_n                
             
                 nbuild_bks = nbuild_bks + 1
-                build_bks[:,nbuild_bks] = block
-                build_ind[:,nbuild_bks] = 1 # TODO check this shouldn't it be the index of the build?
                 
-                build_cnt[:,tt] = build_cnt[:,tt] + 1
+                build_bks[0,nbuild_bks] = block
+                build_ind[0,nbuild_bks] = 1 # TODO check this shouldn't it be the index of the build?
+                
+                build_cnt[0,tt] = build_cnt[0,tt] + 1
 
             else: # send to stockpile - ROM pad                
                 pile_index, = np.where(piles == np.floor(block))
@@ -130,12 +137,12 @@ while (tt < ntime):
         else:
             print "Send to waste dump"
         
-    # Keep crusher feed running from stockpile if necessary - ie keep crusher fully utilised
-        
+    # Keep crusher feed running from stockpile if necessary - ie keep crusher fully utilised       
     for kk in range(0,crusher_rate - build_cnt[:,tt]):
+        print "reclaim"
                 
-        new_grade = (build_n+1)*target - build_n*build_av[:,tt]
-        
+        new_grade = (build_n+1)*target - build_n*build_av[0,tt]
+        print "new grade: "+str(new_grade)
         # which stockpiles have material?
         temp_i, = np.where(piles_n[:,tt] > 0)
         
@@ -145,50 +152,47 @@ while (tt < ntime):
         
             grade = piles[temp_i[igrade]]
             
-            pbuild = build_av[:,tt]
+            pbuild = build_av[0,tt]
             cbuild = ((build_n)*pbuild + grade)/(build_n+1)
             
             #if (abs(cbuild-target) < abs(pbuild-target))
 
             #take the block from the stock pile     
             piles_n[temp_i[igrade],tt] = piles_n[temp_i[igrade],tt] - 1
-            
-            # send the block to the build
-            build_n = build_n + 1
-            
+                       
             # check if we need to start a new build
-            if (build_n is 20):
+            if (build_n is nblocks):
                 build_n = 0
                 build_start = np.append(build_start, tt)
-            
+                                    
+            build_n = build_n + 1
             # calculate the average quality value of the build - ie before a block is added
-            if (build_n is 0): # first block
-                build_av[:,tt] = block
-            
+            # TODO this seems to set av too low
+            if (build_n is 1): # first block
+                build_av[0,tt] = block              
             else: # blocks 2 - number of blocks (20)
-                current_build_av = build_av[:,tt]
-                build_av[:,tt] = ((build_n-1)*current_build_av + block)/build_n
+                current_build_av = build_av[0,tt]
+                build_av[0,tt] = ((build_n-1)*current_build_av + grade)/build_n
                 
-            
-            
             nbuild_bks = nbuild_bks + 1
-            build_bks[:,nbuild_bks] = grade
-           # build_ind[:,nbuild_bks] = 1 # TODO check this shouldn't it be the index of the build?
+            build_bks[0,nbuild_bks] = block
                 
-            build_cnt[:,tt] = build_cnt[:,tt] + 1
-                       
+            build_cnt[0,tt] = build_cnt[0,tt] + 1
+                
     tt = tt + 1
 
-print "Crusher count: " + str(crush_count)
+print "Crushed blocks count: " + str(crush_count)
 #t = np.arange(0.,100,1)
 #plt.plot(t,build_av[0,:],'ro')
 
 build_start = np.append(build_start, ntime)
-for ii in range(1,np.shape(build_start)[0]-1):
-    indices = np.linspace(build_start[ii]+1,build_start[ii+1],10)
+for ii in range(1,np.shape(build_start)[0]-2):
+    indices = np.linspace(build_start[ii],build_start[ii+1]-1,10)
     c = np.cumsum(build_bks[:,(ii-1)*nblocks+1 : (ii*nblocks)+1]  )
-    c = c[np.arange(1,21,2)]
-    ba = np.divide(c,np.arange(2,nblocks+1,2))
+    c = c[np.arange(1,20,2)]
+    ba = np.divide(c,np.arange(2,nblocks+2,2))
+    
     plt.plot(indices,target*np.ones(np.shape(indices)))
     plt.plot(indices, ba)
+    
 
