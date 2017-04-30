@@ -169,13 +169,13 @@ while (tt < ntime):
             # calculate the average quality value of the build - ie before a block is added
             # TODO this seems to set av too low
             if (build_n is 1): # first block
-                build_av[0,tt] = block              
+                build_av[0,tt] = grade              
             else: # blocks 2 - number of blocks (20)
                 current_build_av = build_av[0,tt]
                 build_av[0,tt] = ((build_n-1)*current_build_av + grade)/build_n
                 
             nbuild_bks = nbuild_bks + 1
-            build_bks[0,nbuild_bks] = block
+            build_bks[0,nbuild_bks] = grade
                 
             build_cnt[0,tt] = build_cnt[0,tt] + 1
                 
