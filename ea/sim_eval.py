@@ -6,6 +6,7 @@ Created on Mon May  1 14:50:35 2017
 """
 
 import numpy as np 
+import math
 import matplotlib.pyplot as plt
 
 
@@ -85,7 +86,7 @@ class stockpile_sim(object):
         return np.concatenate((
                 np.random.rand(1,ntime) * 6 + 53,
                 np.random.rand(1,ntime) * 6 + 56,
-                np.random.rand(1,ntime) * 6 + 55,
+                np.random.rand(1,ntime) * 6 + 53,
                 np.zeros((1,ntime)),
                 np.zeros((1,ntime))
                 ))     
@@ -204,9 +205,21 @@ class stockpile_sim(object):
         self.build_start = np.append(self.build_start, self.ntime)
         
 
-    #t = np.arange(0.,100,1)
-    #plt.plot(t,build_av[0,:],'ro')
-    
+    def build_quality_deviation(self):
+
+#        s = stockpile_sim(time_periods=500,grade_target=58.5)
+#        s.run()
+#        serror = 0
+#        for ii in range(1,np.shape(s.build_start)[0]):
+#            serror += math.pow((s.build_av[0, int(s.build_start[ii])-1 ] - s.target ), 2) #math.pow(s.build_av[0, int(s.build_start[1])-1 ] - s.target,2)      
+#            print str( s.build_av[0, int(s.build_start[ii])-1 ] ) + "  "+ str( serror)
+#  
+        serror = 0
+        for ii in range(1,np.shape(self.build_start)[0]):
+            serror += math.pow((self.build_av[0, int(self.build_start[ii])-1 ] - self.target ), 2)
+        return serror   
+  
+        
     def plot_summary(self):
         
         fig1 = plt.figure()
@@ -225,7 +238,7 @@ class stockpile_sim(object):
         ax2.plot(np.transpose(self.piles_n))
         plt.legend(self.piles, ncol=4, loc='lower right', 
                    bbox_to_anchor=[1.0, -0.5],borderaxespad=1)
-        plt.subplots_adjust(left=0.04, bottom=0.15, right=0.96, top=0.96, wspace=0.17, hspace=0.17)
+        plt.subplots_adjust(left=0.07, bottom=0.15, right=0.96, top=0.96, wspace=0.17, hspace=0.17)
         fig1.savefig("output.png", bbox_inches="tight")
         plt.show()
     
