@@ -19,12 +19,12 @@ class Stockyard(object):
     def __init__(self,low, high, num_piles):
         
         # list of empty stacks: empty stockpiles
-        self.stocks = [[] for i in range(self.npiles)] #a = [[0] * number_cols for i in range(number_rows)]
+        self.stocks = [[] for i in range(num_piles)] #a = [[0] * number_cols for i in range(number_rows)]
         
         # thresholds to accept material
         self.stocks_limits = [[] for i in range(num_piles)]        
         step = float((high - low)/num_piles)
-        s_low = self.low
+        s_low = low
         s_high = s_low + step
         for i in range(num_piles):
             self.stocks_limits[i] = (s_low,s_high)
@@ -34,7 +34,7 @@ class Stockyard(object):
     def add_block(self, block):
         # get stockpile index
         pile_index = -1
-        for i in range(self.npiles):
+        for i in range(len(self.stocks)):
             if ( block >= self.stocks_limits[i][0] and block < self.stocks_limits[i][1] ) :
                 pile_index = i
                 break
@@ -43,8 +43,20 @@ class Stockyard(object):
             raise Exception (("can't find stockpile for grade %s"), block) 
         else:
             self.stocks[pile_index].append(block)
+        return pile_index
+
+    def available_stocks(self):
+        av = []
+        for i in range(len(stocks)):
+            
             
     
+    def get_block(self, target_grade):
+        
+                        # which stockpiles have material?
+        temp_i, = np.where(self.piles_n[:,tt] > 0)
+
+        grade = self.stocks[temp_i[igrade]].pop() #self.piles[temp_i[igrade]]
 
 class Stockpile_sim(object):     
     
@@ -105,7 +117,6 @@ class Stockpile_sim(object):
         self.piles = np.array(range (self.low, self.high))
         self.npiles = len (self.piles)
 
-        
         self.stockyard = Stockyard(self.low, self.high, self.npiles)
 
            
@@ -193,11 +204,9 @@ class Stockpile_sim(object):
                         self.build_cnt[0,tt] = self.build_cnt[0,tt] + 1
         
                     else: # send to stockpile - ROM pad               
-
-                        pile_index, = np.where(self.piles == np.floor(block))
-                        self.piles_n [pile_index[0],tt] = self.piles_n [pile_index[0],tt] + 1
-                        print "Send to stockpile: "+str(pile_index[0])+"\t Quality: "+str(self.piles[pile_index[0]] )
-                        self.stocks[pile_index].append(block)
+                        pile_index = self.stockyard.add_block(block)
+                        self.piles_n [pile_index,tt] = self.piles_n [pile_index,tt] + 1
+                        print (("Send block to stockpile: %s %s"),block, pile_index)
                         
                 else:
                     print "Send to waste dump"
@@ -210,11 +219,11 @@ class Stockpile_sim(object):
                 print "new grade: "+str(new_grade)
                 # which stockpiles have material?
                 temp_i, = np.where(self.piles_n[:,tt] > 0)
-                
+                if
                 if (np.size(temp_i) > 0):
                     grade = np.min(np.abs(self.piles[temp_i] - new_grade))
                     igrade = np.argmin(np.abs(self.piles[temp_i] - new_grade))
-                
+             
                     grade = self.stocks[temp_i[igrade]].pop() #self.piles[temp_i[igrade]]
                     #take the block from the stock pile     
                     self.piles_n[temp_i[igrade],tt] = self.piles_n[temp_i[igrade],tt] - 1
