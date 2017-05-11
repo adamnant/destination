@@ -12,26 +12,64 @@ import matplotlib.pyplot as plt
 
 
 class Stockyard(object):
+    ntime = 0    
+    
     stocks = None # the actual blocks - a list of stacks - one for each stockpile
-    stocks_limits = None # a list of the upper and lower limits for corresponding stockpiles in stocks
+    stocks_limits = None # array - for each stockpile [[s1 l,s1 h,s1 m],... ]
+    
+
+    piles = None # rehandle stockpiles
+    npiles = 0 # number of rehandle stockpiles
+    piles_n = None # number of blocks on stockpiles at timestep n 
     
     
-    def __init__(self,low, high, num_piles):
+    def __init__(self,low, high, num_piles,ntime):
+        
+        self.ntime = ntime
+        self.piles = np.array(range (num_piles))
+        self.npiles = len (self.piles)
+        
+        self.piles_n = np.zeros((self.npiles,self.ntime)) # variable to store number of blocks in each stockpile at each timestep in the sim
+        self.piles_n[0:self.npiles,0] = 0 # set starting stockpile inventory   
         
         # list of empty stacks: empty stockpiles
         self.stocks = [[] for i in range(num_piles)] #a = [[0] * number_cols for i in range(number_rows)]
+        self.example_thresholds_3()
         
+
+
+    def example_thresholds_3(self):
+        self.npiles = 3
+        self.stocks_limits = np.zeros((self.npiles,2))
+        self.stocks_limits = np.array([\
+                                       [55,56],\
+                                       [56,57],\
+                                       [57,59],\
+                                       [59,60],\
+                                       [60,65]])
+        
+        
+            
+    def example_even_spaced_stockpile_thresholds(self, low, high,num_piles):
         # thresholds to accept material
-        self.stocks_limits = [[] for i in range(num_piles)]        
+        self.stocks_limits = np.zeros((num_piles,2))  
+        
         step = float((high - low)/num_piles)
-        s_low = low
-        s_high = s_low + step
+             
+        s_low = float(low)
+        s_high = float(s_low + step)
+        
         for i in range(num_piles):
-            self.stocks_limits[i] = (s_low,s_high)
+            self.stocks_limits[i] = [s_low,s_high]
             s_low += step
             s_high += step
         
-    def add_block(self, block):
+
+    def update_trackers(self, tt):
+        self.piles_n[:,tt] = self.piles_n[:,tt-1]
+        
+        
+    def add_block(self, block, tt):
         # get stockpile index
         pile_index = -1
         for i in range(len(self.stocks)):
@@ -43,20 +81,42 @@ class Stockyard(object):
             raise Exception (("can't find stockpile for grade %s"), block) 
         else:
             self.stocks[pile_index].append(block)
+            self.piles_n [pile_index,tt] = self.piles_n [pile_index,tt] + 1
         return pile_index
 
     def available_stocks(self):
         av = []
-        for i in range(len(stocks)):
+        for i in range(len(self.stocks)) :
+            if len(self.stocks[i]) > 0 :
+                av.append(i)
+        return av
             
-            
-    
-    def get_block(self, target_grade):
+    def get_block(self, target_grade, tt):
+        # which stockpiles have material?
+        available = self.available_stocks()
         
-                        # which stockpiles have material?
-        temp_i, = np.where(self.piles_n[:,tt] > 0)
+        # if no stocks at all just return None
+        if not available:
+            return None
+              
+        # Try to find a block with the lowest level above the target grade ie compare to min threshold 
+        # otherwise return the highest grade available to try to keep crushers running
+        # also note available is assumed in order of lowest to highest grade stockpile
+              
+        for pile_ind in available :
+            if self.stocks_limits[pile_ind][0] >= target_grade:
+                block = self.stocks[pile_ind].pop() 
+                self.piles_n [pile_ind,tt] = self.piles_n [pile_ind,tt] - 1
+                return block 
+        
+        # didn't find a block above the target quality so return highest grade available which is the highest index in available if stockpiles
+        # are indexed in order of 
+        pile_ind = available[len(available)-1]
+        block = self.stocks[pile_ind].pop() 
+        self.piles_n [pile_ind,tt] = self.piles_n [pile_ind,tt] - 1
+        return block                 
+                
 
-        grade = self.stocks[temp_i[igrade]].pop() #self.piles[temp_i[igrade]]
 
 class Stockpile_sim(object):     
     
@@ -67,11 +127,10 @@ class Stockpile_sim(object):
     ntime = 0 # number of time periods in simulation  
     low = 0 # low grade cutoff
     high = 0  # highest grade threshold
-    piles = None # rehandle stockpiles
-    npiles = 0 # number of rehandle stockpiles
-    piles_n = None # number of blocks on stockpiles at timestep n 
+
 
     stockyard = None # stockyard object 
+    npiles = 0 # number of rehandle stockpiles
     
     digggers = None # block sequence for each digging unit  
     crusher_rate = 0 # blocks per time unit for crusher
@@ -87,19 +146,22 @@ class Stockpile_sim(object):
     
     build_start = None
     
-    def __init__(self, time_periods=100, starting_inventory_n=0, grade_target=58.0):
+    def __init__(self, time_periods=100, starting_inventory_n=0, num_stockpiles=5, grade_target=58.0):
         """
         Destination problem simulation
         """               
         self.ndiggers = 5       
         self.nblocks = 20       
-        self.ntime = time_periods   
+        self.ntime = time_periods  
+        
+        self.npiles = num_stockpiles
         
         self.low = 55      
-        self.high = 62  
+        self.high = 63  
 
         self.starting_inventory_n = starting_inventory_n
         self.target = grade_target
+        
         # digger model                
         # mining sequence per dig unit
         self.diggers = self._get_digger_block_seq(self.ntime)
@@ -114,15 +176,13 @@ class Stockpile_sim(object):
         """
         # stockpile model
         # initially use one stockpile for each integer grade in the range
-        self.piles = np.array(range (self.low, self.high))
-        self.npiles = len (self.piles)
 
-        self.stockyard = Stockyard(self.low, self.high, self.npiles)
+
+        self.stockyard = Stockyard(self.low, self.high, self.npiles,self.ntime)
 
            
         # state variables
-        self.piles_n = np.zeros((self.npiles,self.ntime)) # variable to store number of blocks in each stockpile at each timestep in the sim
-        self.piles_n[0:self.npiles,0] = self.starting_inventory_n # set starting stockpile inventory       
+    
         self.build_av = np.zeros((1,self.ntime))
         self.build_cnt = np.zeros((1,self.ntime))        
         self.build_bks = np.zeros((1,self.ntime*self.ndiggers))  
@@ -138,7 +198,7 @@ class Stockpile_sim(object):
         return np.concatenate((
                 np.random.rand(1,ntime) * 6 + 53,
                 np.random.rand(1,ntime) * 6 + 56,
-                np.random.rand(1,ntime) * 6 + 53,
+                np.random.rand(1,ntime) * 6 + 56,
                 np.zeros((1,ntime)),
                 np.zeros((1,ntime))
                 ))     
@@ -153,8 +213,9 @@ class Stockpile_sim(object):
             print "time step: "+str (tt)
             
             if (tt > 0):
-                self.piles_n[:,tt] = self.piles_n[:,tt-1]
                 self.build_av[:,tt] = self.build_av[:,tt-1]
+                self.stockyard.update_trackers(tt)
+
             
             # for each digger
             for jj in range (0,self.ndiggers):
@@ -172,15 +233,14 @@ class Stockpile_sim(object):
                         self.upper[0,tt] = 100
                         self.lower[0,tt] = 0                
                     else: 
-                        self.upper[0,tt] = self.nblocks*self.target - build_n*self.build_av[0,tt] - (self.nblocks - build_n-1)*self.piles[0]
-                        self.lower[0,tt] = self.nblocks*self.target - build_n*self.build_av[0,tt] - (self.nblocks - build_n-1)*self.piles[self.npiles-1]            
+                        self.upper[0,tt] = self.nblocks*self.target - build_n*self.build_av[0,tt] - (self.nblocks - build_n-1)*self.low
+                        self.lower[0,tt] = self.nblocks*self.target - build_n*self.build_av[0,tt] - (self.nblocks - build_n-1)*self.high           
                     print "accept: "+str(self.lower[:,tt] ) +" \t"+str(self.upper[:,tt]) 
-                     
-                    
+                                         
                     # Decide whether to send to a stockpile or to the crusher            
                     if (block >= self.lower[:,tt] and block <= self.upper[:,tt]) : # send to crusher (build)                                  
                         print "send to crusher"
-                        print "build_n: "+str(build_n)                
+                        print "build_n: "+str(build_n)
                                 
                         # check if a new build is to be started (build size = 20)
                         if (build_n is self.nblocks):
@@ -204,8 +264,8 @@ class Stockpile_sim(object):
                         self.build_cnt[0,tt] = self.build_cnt[0,tt] + 1
         
                     else: # send to stockpile - ROM pad               
-                        pile_index = self.stockyard.add_block(block)
-                        self.piles_n [pile_index,tt] = self.piles_n [pile_index,tt] + 1
+                        pile_index = self.stockyard.add_block(block, tt)
+                        
                         print (("Send block to stockpile: %s %s"),block, pile_index)
                         
                 else:
@@ -217,17 +277,11 @@ class Stockpile_sim(object):
                         
                 new_grade = (build_n+1)*self.target - build_n*self.build_av[0,tt]
                 print "new grade: "+str(new_grade)
-                # which stockpiles have material?
-                temp_i, = np.where(self.piles_n[:,tt] > 0)
-                if
-                if (np.size(temp_i) > 0):
-                    grade = np.min(np.abs(self.piles[temp_i] - new_grade))
-                    igrade = np.argmin(np.abs(self.piles[temp_i] - new_grade))
-             
-                    grade = self.stocks[temp_i[igrade]].pop() #self.piles[temp_i[igrade]]
-                    #take the block from the stock pile     
-                    self.piles_n[temp_i[igrade],tt] = self.piles_n[temp_i[igrade],tt] - 1
-                    
+                # take block from stockpile
+                grade = self.stockyard.get_block(new_grade, tt)
+                
+                if (grade is not None):
+                                            
                     pbuild = self.build_av[0,tt]
                     self.cbuild = ((build_n)*pbuild + grade)/(build_n+1)
                     
@@ -288,8 +342,8 @@ class Stockpile_sim(object):
             ax1.plot(indices,self.target*np.ones(np.shape(indices)),color = 'k')
             ax1.plot(indices, ba, color = 'k')
         
-        ax2.plot(np.transpose(self.piles_n))
-        plt.legend(self.piles, ncol=4, loc='lower right', 
+        ax2.plot(np.transpose(self.stockyard.piles_n))
+        plt.legend(self.stockyard.piles, ncol=4, loc='lower right', 
                    bbox_to_anchor=[1.0, -0.5],borderaxespad=1)
         plt.subplots_adjust(left=0.07, bottom=0.15, right=0.96, top=0.96, wspace=0.17, hspace=0.17)
         fig1.savefig("output.png", bbox_inches="tight")
