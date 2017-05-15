@@ -20,8 +20,7 @@ class Stockyard(object):
 
     piles = None # rehandle stockpiles
     npiles = 0 # number of rehandle stockpiles
-    piles_n = None # number of blocks on stockpiles at timestep n 
-    
+    piles_n = None # number of blocks on stockpiles at timestep n     
     
     def __init__(self,low, high, num_piles,ntime):
         
@@ -34,23 +33,24 @@ class Stockyard(object):
         
         # list of empty stacks: empty stockpiles
         self.stocks = [[] for i in range(num_piles)] #a = [[0] * number_cols for i in range(number_rows)]
-        self.example_thresholds_3()
+        self.example_thresholds()
         
 
 
-    def example_thresholds_3(self):
-        self.npiles = 3
+    def example_thresholds(self):
+        self.npiles = 5
         self.stocks_limits = np.zeros((self.npiles,2))
+        # pile zero is default catch all pile / dump - not used to reclaim
         self.stocks_limits = np.array([\
-                                       [55,56],\
-                                       [56,57],\
-                                       [57,59],\
-                                       [59,60],\
-                                       [60,65]])
-        
-        
+                                       [0,0],\
+                                       [55,57.5],\
+                                       [57.5,59],\
+                                       [59,63],\
+                                       [63,66]])
+        # min = 55, max = 66
+        # self.stocks_limits = np.array([60,61,62,63,65]) 
             
-    def example_even_spaced_stockpile_thresholds(self, low, high,num_piles):
+    def example_even_spaced_stockpile_thresholds(self, low, high, num_piles):
         # thresholds to accept material
         self.stocks_limits = np.zeros((num_piles,2))  
         
@@ -71,22 +71,28 @@ class Stockyard(object):
         
     def add_block(self, block, tt):
         # get stockpile index
-        pile_index = -1
-        for i in range(len(self.stocks)):
-            if ( block >= self.stocks_limits[i][0] and block < self.stocks_limits[i][1] ) :
-                pile_index = i
+        # pile zero is default catch all pile / dump 
+        # can set to -1 if not using catch all pile and raise exception or define other behaviour
+        pile_index = 0
+        for ind in range(1,len(self.stocks)):
+            if ( block >= self.stocks_limits[ind][0] and block < self.stocks_limits[ind][1] ) :
+                pile_index = ind
                 break
 
-        if pile_index is -1: 
-            raise Exception (("can't find stockpile for grade %s"), block) 
-        else:
-            self.stocks[pile_index].append(block)
-            self.piles_n [pile_index,tt] = self.piles_n [pile_index,tt] + 1
+#        if pile_index is -1:
+#            pile_index = 0            
+#             raise Exception (("can't find stockpile for grade %s"), block) 
+ #       else:
+
+        self.stocks[pile_index].append(block)
+        self.piles_n [pile_index,tt] = self.piles_n [pile_index,tt] + 1
+        
         return pile_index
 
     def available_stocks(self):
         av = []
-        for i in range(len(self.stocks)) :
+        # pile zero is currently a catch all pile / dump - not used to reclaim just to track blocks that fall through thresholds as defined in stockpile list
+        for i in range(1,len(self.stocks)) :
             if len(self.stocks[i]) > 0 :
                 av.append(i)
         return av
@@ -94,7 +100,6 @@ class Stockyard(object):
     def get_block(self, target_grade, tt):
         # which stockpiles have material?
         available = self.available_stocks()
-        
         # if no stocks at all just return None
         if not available:
             return None
@@ -308,10 +313,10 @@ class Stockpile_sim(object):
                     
             tt = tt + 1
         self.build_start = np.append(self.build_start, self.ntime)
-        print self.build_quality_deviation()
+        print self.eval()
         
 
-    def build_quality_deviation(self):
+    def eval(self):
 
 #        s = stockpile_sim(time_periods=500,grade_target=58.5)
 #        s.run()
