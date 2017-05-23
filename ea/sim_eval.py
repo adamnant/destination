@@ -11,6 +11,8 @@ import matplotlib.pyplot as plt
 
 
 
+NUM_PILES = 7
+
 class Stockyard(object):
     ntime = 0    
     
@@ -33,20 +35,41 @@ class Stockyard(object):
         
         # list of empty stacks: empty stockpiles
         self.stocks = [[] for i in range(num_piles)] #a = [[0] * number_cols for i in range(number_rows)]
-        self.example_thresholds()
+        #self.example_thresholds()
+        
         
 
+    def set_thresholds_ea(self, thresholds):
+        print "set_thresholds_ea" 
+        print thresholds
+        # get an ndarray
+        #self.npiles = NUM_PILES
+        self.stocks_limits = np.zeros((self.npiles,2))
+        # zeroth pile is not used so just set to zero
+        self.stocks_limits[0,0] = 0.0
+        self.stocks_limits[0,1] = 0.0
+        
+        for i in range(1,self.npiles):
+            self.stocks_limits[i,0] = thresholds[i-1,0]
+            self.stocks_limits[i,1] = thresholds[i-1,1]
+        self.stocks_limits = self.stocks_limits[self.stocks_limits[:,0].argsort()] 
+        print self.stocks_limits
+        
 
-    def example_thresholds(self):
-        self.npiles = 5
+    def set_example_thresholds(self):
+        self.npiles = NUM_PILES
         self.stocks_limits = np.zeros((self.npiles,2))
         # pile zero is default catch all pile / dump - not used to reclaim
         self.stocks_limits = np.array([\
                                        [0,0],\
-                                       [55,57.5],\
+                                       [50,57.5],\
                                        [57.5,59],\
-                                       [59,63],\
-                                       [63,66]])
+                                       [59,60],\
+                                       [60,61],\
+                                       [55,57],\
+                                       [61,66]])
+        # sort by the lower threshold:
+        self.stocks_limits = self.stocks_limits[self.stocks_limits[:,0].argsort()]                              
         # min = 55, max = 66
         # self.stocks_limits = np.array([60,61,62,63,65]) 
             
@@ -73,6 +96,8 @@ class Stockyard(object):
         # get stockpile index
         # pile zero is default catch all pile / dump 
         # can set to -1 if not using catch all pile and raise exception or define other behaviour
+        assert len(self.stocks) == len(self.stocks_limits), "%s %s" % (len(self.stocks) ,len(self.stocks_limits))
+        
         pile_index = 0
         for ind in range(1,len(self.stocks)):
             if ( block >= self.stocks_limits[ind][0] and block < self.stocks_limits[ind][1] ) :
@@ -151,25 +176,26 @@ class Stockpile_sim(object):
     
     build_start = None
     
-    def __init__(self, time_periods=100, starting_inventory_n=0, num_stockpiles=5, grade_target=58.0):
+    def __init__(self, time_periods=40, starting_inventory_n=0, num_stockpiles=NUM_PILES, grade_target=55.0):
         """
         Destination problem simulation
         """               
-        self.ndiggers = 5       
-        self.nblocks = 20       
+        self.ndiggers = 2 
+        self.nblocks = 19 
         self.ntime = time_periods  
         
         self.npiles = num_stockpiles
         
-        self.low = 55      
-        self.high = 63  
+        self.low = 45      
+        self.high = 60  
 
         self.starting_inventory_n = starting_inventory_n
         self.target = grade_target
         
         # digger model                
         # mining sequence per dig unit
-        self.diggers = self._get_digger_block_seq(self.ntime)
+        self.diggers = self._load_digger_block_seq(self.ntime)
+        print self.diggers
         
         # crusher model
         # blocks to crush per time period (one crusher)
@@ -198,19 +224,44 @@ class Stockpile_sim(object):
         self.nbuild_bks=0 # blocks in builds
         
 
-    def _get_digger_block_seq(self,ntime):
+    
+    def _load_digger_block_seq(self, ntime, filename = 'dig_seq.csv'):
 
-        return np.concatenate((
-                np.random.rand(1,ntime) * 6 + 53,
-                np.random.rand(1,ntime) * 6 + 56,
-                np.random.rand(1,ntime) * 6 + 56,
-                np.zeros((1,ntime)),
+        
+        data = np.genfromtxt (filename, delimiter=",")
+        
+        seq = np.concatenate((\
+                np.zeros((1,ntime)),\
                 np.zeros((1,ntime))
-                ))     
+        ))
+        
+        
+                
+        for ii in range(len(seq[0,:])):
+            if (ii < len(data)):
+                seq[0,ii]=data[ii]
+            else:
+                break
+        
+        return seq
+        
+
+    def _get_digger_block_seq(self,ntime,values = None):
+
+
+        return np.concatenate((\
+                np.random.rand(1,ntime)*10 + 55,\
+                np.ones((1,ntime))*55,\
+                np.zeros((1,ntime)),\
+                np.zeros((1,ntime)),\
+                np.zeros((1,ntime))\
+                )) 
+        
+            
     
 
     def run(self):
-        self.reset()
+        #self.reset()
         tt=0
         build_n = 0 # blocks in a current build
         
@@ -233,7 +284,6 @@ class Stockpile_sim(object):
                 if(block >= self.low):
                     
                     # calculate lower and upper threshold for selecting a block for the build
-                    # that would allow the target to be met
                     if (build_n is 0 or build_n is self.nblocks):
                         self.upper[0,tt] = 100
                         self.lower[0,tt] = 0                
@@ -241,7 +291,10 @@ class Stockpile_sim(object):
                         self.upper[0,tt] = self.nblocks*self.target - build_n*self.build_av[0,tt] - (self.nblocks - build_n-1)*self.low
                         self.lower[0,tt] = self.nblocks*self.target - build_n*self.build_av[0,tt] - (self.nblocks - build_n-1)*self.high           
                     print "accept: "+str(self.lower[:,tt] ) +" \t"+str(self.upper[:,tt]) 
-                                         
+                    
+                    
+                    #if self.dest_blk[jj,tt] is 0 :                    
+                    
                     # Decide whether to send to a stockpile or to the crusher            
                     if (block >= self.lower[:,tt] and block <= self.upper[:,tt]) : # send to crusher (build)                                  
                         print "send to crusher"
@@ -279,8 +332,8 @@ class Stockpile_sim(object):
             # Keep crusher feed running from stockpile if necessary - ie keep crusher fully utilised       
             for kk in range(0,self.crusher_rate - self.build_cnt[:,tt]):
                 print "reclaim"
-                        
-                new_grade = (build_n+1)*self.target - build_n*self.build_av[0,tt]
+                
+                new_grade = (build_n+1) * self.target - build_n * self.build_av[0,tt]
                 print "new grade: "+str(new_grade)
                 # take block from stockpile
                 grade = self.stockyard.get_block(new_grade, tt)
@@ -313,36 +366,48 @@ class Stockpile_sim(object):
                     
             tt = tt + 1
         self.build_start = np.append(self.build_start, self.ntime)
-        print self.eval()
+        return self.eval()
         
 
     def eval(self):
 
-#        s = stockpile_sim(time_periods=500,grade_target=58.5)
-#        s.run()
-#        serror = 0
-#        for ii in range(1,np.shape(s.build_start)[0]):
-#            error = math.pow((s.build_av[0, int(s.build_start[ii])-1 ] - s.target ), 2)
-#            serror += error #math.pow(s.build_av[0, int(s.build_start[1])-1 ] - s.target,2)      
-#            print str( s.build_av[0, int(s.build_start[ii])-1 ] ) + "\t"+ str( error) +"\t" +str(serror)
-#  
         serror = 0
         for ii in range(1,np.shape(self.build_start)[0]):
             serror += math.pow((self.build_av[0, int(self.build_start[ii])-1 ] - self.target ), 2)
+        
+        penalty =   self.stockyard.piles_n[0,self.ntime-1]
+        
+        serror += penalty
+            
         return serror   
   
         
     def plot_summary(self):
         
+        print "plot_summary"
+        
         fig1 = plt.figure()
         ax1 = fig1.add_subplot(211)
         ax2 = fig1.add_subplot(212)
         
-        for ii in range(1,np.shape(self.build_start)[0]-2):
-            indices = np.linspace(self.build_start[ii],self.build_start[ii+1]-1,10)
-            c = np.cumsum(self.build_bks[:,(ii-1)*self.nblocks+1 : (ii*self.nblocks)+1]  )
-            c = c[np.arange(1,20,2)]
-            ba = np.divide(c,np.arange(2,self.nblocks+2,2))
+        print np.shape(self.build_start)[0]
+        
+        for ii in range(1,np.shape(self.build_start)[0]):
+            indices = np.linspace(self.build_start[ii-1] + 1,self.build_start[ii]-1,self.nblocks/2)            
+            
+            print indices
+            c = np.cumsum(self.build_bks[:,(ii-1)*self.nblocks +1 : (ii*self.nblocks)+1]  )
+
+            print "***"
+            print (ii-1)*self.nblocks  + 1
+            print (ii*self.nblocks)+1
+            print np.cumsum(self.build_bks[:,(ii-1)*self.nblocks +1: (ii*self.nblocks)+1]  )
+            print "***"
+                        
+            c = c[np.arange(1,self.nblocks,2)]
+            print c
+            print np.arange(2,self.nblocks,2)
+            ba = np.divide(c,np.arange(2,self.nblocks,2))
             
             ax1.plot(indices,self.target*np.ones(np.shape(indices)),color = 'k')
             ax1.plot(indices, ba, color = 'k')
@@ -356,4 +421,12 @@ class Stockpile_sim(object):
     
     
     #np.savetxt("stockpiles.csv", piles_n, delimiter=",",fmt='%i')
+    
+def test():
+    s = Stockpile_sim()
+    s.reset()
+    s.stockyard.set_example_thresholds()
+    s.run()
+    s.plot_summary()
+    return s
     
