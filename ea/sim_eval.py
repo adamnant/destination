@@ -207,7 +207,7 @@ class Stockpile_sim(object):
         Destination problem simulation
         """               
         self.ndiggers = 2 
-        self.nblocks = 19 
+        self.nblocks = 8 
         self.ntime = time_periods  
         
         self.npiles = num_stockpiles
@@ -473,7 +473,7 @@ def test():
     s = Stockpile_sim()
     s.reset()
     s.stockyard.set_example_thresholds()
-    s.set_destinations(1,np.random.randint(0, size=(1, 40)) )
+    s.set_destinations(1,np.random.randint(2, size=(1, 40)) )
     s.run()
     s.plot_summary()
     return s

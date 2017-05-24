@@ -77,7 +77,7 @@ toolbox.register("mate", cxTwoPointCopy)
 toolbox.register("mutate", tools.mutFlipBit, indpb=0.05)
 toolbox.register("select", tools.selTournament, tournsize=3)
 
-def main():
+def ea_runner():
     random.seed(64)
     
     pop = toolbox.population(n=100)
@@ -99,5 +99,5 @@ def main():
 
     return pop, stats, hof
 
-if __name__ == "__main__":
-    main()
+#if __name__ == "__main__":
+#    main()
