@@ -63,8 +63,28 @@ def evaluate(individual):
     fit = simulation.run()
     
     return fit,
+    
+def evaluate_destinations(individual):
+    simulation = sim.Stockpile_sim()
+    simulation.reset()
+    simulation.stockyard.set_example_thresholds()
+    simulation.set_destinations(0,individual)
+    fit = simulation.run()
+    
+    return fit,
 
-def plot_sim(individual):
+
+def plot_sim_dest_individual(individual):
+    simulation = sim.Stockpile_sim()
+    simulation.reset()
+    simulation.stockyard.set_example_thresholds()
+    simulation.set_destinations(0,individual)
+    simulation.run()
+    simulation.plot_summary()
+    
+    return simulation
+
+def plot_sim_threshold_individual(individual):
     
     simulation = sim.Stockpile_sim(num_stockpiles = len(individual) )
     

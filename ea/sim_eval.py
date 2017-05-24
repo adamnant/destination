@@ -21,10 +21,13 @@ class Stockyard(object):
     
 
     piles = None # rehandle stockpiles
+    stockpile_state = None # stockpile build model - indicates whether stockyard is in build or destroy mode  
+    stockpile_capacity = 4
+    
     npiles = 0 # number of rehandle stockpiles
     piles_n = None # number of blocks on stockpiles at timestep n     
     
-    def __init__(self,low, high, num_piles,ntime):
+    def __init__(self,low, high, num_piles,ntime, s_capacity=4):
         
         self.ntime = ntime
         self.piles = np.array(range (num_piles))
@@ -36,6 +39,8 @@ class Stockyard(object):
         # list of empty stacks: empty stockpiles
         self.stocks = [[] for i in range(num_piles)] #a = [[0] * number_cols for i in range(number_rows)]
         #self.example_thresholds()
+        self.stockpile_state = [1 for i in range(num_piles)] # 1 means pile is in build mode
+        self.stockpile_capacity = s_capacity
         
         
 
@@ -56,18 +61,20 @@ class Stockyard(object):
         print self.stocks_limits
         
 
+
+
     def set_example_thresholds(self):
-        self.npiles = NUM_PILES
+        #self.npiles = NUM_PILES
         self.stocks_limits = np.zeros((self.npiles,2))
         # pile zero is default catch all pile / dump - not used to reclaim
         self.stocks_limits = np.array([\
                                        [0,0],\
-                                       [50,57.5],\
-                                       [57.5,59],\
-                                       [59,60],\
-                                       [60,61],\
-                                       [55,57],\
-                                       [61,66]])
+                                       [48,51],\
+                                       [51,54],\
+                                       [54,57],\
+                                       [57,60],\
+                                       [61,63],\
+                                       [64,66]])
         # sort by the lower threshold:
         self.stocks_limits = self.stocks_limits[self.stocks_limits[:,0].argsort()]                              
         # min = 55, max = 66
@@ -96,13 +103,15 @@ class Stockyard(object):
         # get stockpile index
         # pile zero is default catch all pile / dump 
         # can set to -1 if not using catch all pile and raise exception or define other behaviour
+
         assert len(self.stocks) == len(self.stocks_limits), "%s %s" % (len(self.stocks) ,len(self.stocks_limits))
         
         pile_index = 0
         for ind in range(1,len(self.stocks)):
             if ( block >= self.stocks_limits[ind][0] and block < self.stocks_limits[ind][1] ) :
-                pile_index = ind
-                break
+                if (self.stockpile_state[ind] > 0): # is pile is in build state
+                    pile_index = ind
+                    break
 
 #        if pile_index is -1:
 #            pile_index = 0            
@@ -112,13 +121,17 @@ class Stockyard(object):
         self.stocks[pile_index].append(block)
         self.piles_n [pile_index,tt] = self.piles_n [pile_index,tt] + 1
         
+        # update build state
+        if ( len(self.stocks[pile_index]) >= self.stockpile_capacity ):
+            self.stockpile_state[ind] = 0 # set pile to reclaim state
+        
         return pile_index
 
     def available_stocks(self):
         av = []
         # pile zero is currently a catch all pile / dump - not used to reclaim just to track blocks that fall through thresholds as defined in stockpile list
         for i in range(1,len(self.stocks)) :
-            if len(self.stocks[i]) > 0 :
+            if len(self.stocks[i]) > 0 and self.stockpile_state[i] == 0: # are stocks and pile is in reclaim mode
                 av.append(i)
         return av
             
@@ -137,6 +150,12 @@ class Stockyard(object):
             if self.stocks_limits[pile_ind][0] >= target_grade:
                 block = self.stocks[pile_ind].pop() 
                 self.piles_n [pile_ind,tt] = self.piles_n [pile_ind,tt] - 1
+   
+                # update state to build if pile has become empty (build destroy logic)
+                if len(self.stocks[pile_ind]) == 0:
+                    self.stockpile_state[pile_ind] = 1
+                                            
+                
                 return block 
         
         # didn't find a block above the target quality so return highest grade available which is the highest index in available if stockpiles
@@ -144,6 +163,11 @@ class Stockyard(object):
         pile_ind = available[len(available)-1]
         block = self.stocks[pile_ind].pop() 
         self.piles_n [pile_ind,tt] = self.piles_n [pile_ind,tt] - 1
+
+        # update state to build mode in case any pile has become empty ( build destroy logic)        
+        if len(self.stocks[pile_ind]) == 0:
+            self.stockpile_state[pile_ind] = 1
+        
         return block                 
                 
 
@@ -163,6 +187,8 @@ class Stockpile_sim(object):
     npiles = 0 # number of rehandle stockpiles
     
     digggers = None # block sequence for each digging unit  
+    destinations = None # destinations of each block for each digging unit    
+    
     crusher_rate = 0 # blocks per time unit for crusher
 
     build_av = None
@@ -196,6 +222,9 @@ class Stockpile_sim(object):
         # mining sequence per dig unit
         self.diggers = self._load_digger_block_seq(self.ntime)
         print self.diggers
+        
+        self.destinations = self._set_random_dest(self.ntime)
+        print self.destinations
         
         # crusher model
         # blocks to crush per time period (one crusher)
@@ -244,6 +273,17 @@ class Stockpile_sim(object):
                 break
         
         return seq
+
+
+    def _set_random_dest(self, ntime):
+        assert self.diggers is not None
+        block_destinations = np.random.randint(2, size=(self.ndiggers, ntime))
+        
+        return block_destinations
+    
+    def set_destinations(self, digger, array):
+        print "<><><> set destinations <><><>"        
+        self.destinations[digger,:] = array
         
 
     def _get_digger_block_seq(self,ntime,values = None):
@@ -291,12 +331,13 @@ class Stockpile_sim(object):
                         self.upper[0,tt] = self.nblocks*self.target - build_n*self.build_av[0,tt] - (self.nblocks - build_n-1)*self.low
                         self.lower[0,tt] = self.nblocks*self.target - build_n*self.build_av[0,tt] - (self.nblocks - build_n-1)*self.high           
                     print "accept: "+str(self.lower[:,tt] ) +" \t"+str(self.upper[:,tt]) 
+                    print "dest to crusher: "+ str(self.destinations[jj,tt] ==0)
                     
                     
-                    #if self.dest_blk[jj,tt] is 0 :                    
-                    
-                    # Decide whether to send to a stockpile or to the crusher            
-                    if (block >= self.lower[:,tt] and block <= self.upper[:,tt]) : # send to crusher (build)                                  
+                    # Decide whether to send to a stockpile or to the crusher  
+                    # comment out one of the methods (either the business logic thresholds or the bit string logic)
+                    if self.destinations[jj,tt] == 0 :                                                                      
+                    #if (block >= self.lower[:,tt] and block <= self.upper[:,tt]) : # send to crusher (build)                                  
                         print "send to crusher"
                         print "build_n: "+str(build_n)
                                 
@@ -323,9 +364,13 @@ class Stockpile_sim(object):
         
                     else: # send to stockpile - ROM pad               
                         pile_index = self.stockyard.add_block(block, tt)
-                        
+                        print "***"
+                        print "stocks"
+                        print self.stockyard.stocks
                         print (("Send block to stockpile: %s %s"),block, pile_index)
-                        
+                        print "updated stocks"
+                        print self.stockyard.stocks
+                        print "***"
                 else:
                     print "Send to waste dump"
                 
@@ -337,6 +382,8 @@ class Stockpile_sim(object):
                 print "new grade: "+str(new_grade)
                 # take block from stockpile
                 grade = self.stockyard.get_block(new_grade, tt)
+                print "available grade: " +str (grade)
+                print self.stockyard.stocks
                 
                 if (grade is not None):
                                             
@@ -426,6 +473,7 @@ def test():
     s = Stockpile_sim()
     s.reset()
     s.stockyard.set_example_thresholds()
+    s.set_destinations(1,np.random.randint(0, size=(1, 40)) )
     s.run()
     s.plot_summary()
     return s
