@@ -31,7 +31,7 @@ from deap import base
 from deap import creator
 from deap import tools
 
-creator.create("FitnessMax", base.Fitness, weights=(-1.0,))
+creator.create("FitnessMin", base.Fitness, weights=(-1.0,))
 creator.create("Individual", numpy.ndarray, fitness=creator.FitnessMin)
 
 toolbox = base.Toolbox()

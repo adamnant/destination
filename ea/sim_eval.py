@@ -207,7 +207,7 @@ class Stockpile_sim(object):
         Destination problem simulation
         """               
         self.ndiggers = 2 
-        self.nblocks = 8 
+        self.nblocks = 11
         self.ntime = time_periods  
         
         self.npiles = num_stockpiles
