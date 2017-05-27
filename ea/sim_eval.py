@@ -9,6 +9,9 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 
+import os
+from datetime import datetime
+
 
 
 NUM_PILES = 7
@@ -45,8 +48,8 @@ class Stockyard(object):
         
 
     def set_thresholds_ea(self, thresholds):
-        print "set_thresholds_ea" 
-        print thresholds
+        #print "set_thresholds_ea" 
+        #print thresholds
         # get an ndarray
         #self.npiles = NUM_PILES
         self.stocks_limits = np.zeros((self.npiles,2))
@@ -58,7 +61,7 @@ class Stockyard(object):
             self.stocks_limits[i,0] = thresholds[i-1,0]
             self.stocks_limits[i,1] = thresholds[i-1,1]
         self.stocks_limits = self.stocks_limits[self.stocks_limits[:,0].argsort()] 
-        print self.stocks_limits
+        #print self.stocks_limits
         
 
 
@@ -140,7 +143,7 @@ class Stockyard(object):
         available = self.available_stocks()
         # if no stocks at all just return None
         if not available:
-            return None
+            return None, -1
               
         # Try to find a block with the lowest level above the target grade ie compare to min threshold 
         # otherwise return the highest grade available to try to keep crushers running
@@ -156,7 +159,7 @@ class Stockyard(object):
                     self.stockpile_state[pile_ind] = 1
                                             
                 
-                return block 
+                return block, pile_ind
         
         # didn't find a block above the target quality so return highest grade available which is the highest index in available if stockpiles
         # are indexed in order of 
@@ -168,8 +171,46 @@ class Stockyard(object):
         if len(self.stocks[pile_ind]) == 0:
             self.stockpile_state[pile_ind] = 1
         
-        return block                 
+        return block    ,pile_ind             
                 
+
+class sim_stats:
+
+    # builds
+    # 1 time, 2 target, 3 build index, 4 num blocks in build,  5 block qual, 
+    # 6 csum block qual, 7 source (pit 0, stockpile 1)    
+            
+    table = None
+    def __init__(self, ntime):
+        #self.table = np.zeros((ntime,8))
+        self.table = []
+        self.time = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.file_path = "./results/%s build.csv"%(self.time)
+        self.directory = os.path.dirname(self.file_path)
+
+        try:
+            os.stat(self.directory)
+        except:
+            os.mkdir(self.directory)  
+    
+    def add_row(self, time, target, bld_ind, build_n, block_q, build_avg, block_src, digger_pile_index):
+        self.table.append((time, target, bld_ind, build_n, block_q, build_avg, block_src,digger_pile_index))
+        
+    def print_table(self, piles_n,destinations):
+        build = np.reshape(self.table, newshape=(len(self.table), 8))
+        np.savetxt(self.file_path, build, delimiter=",",fmt='%.2f')
+        
+        stockpiles_file_path = "./results/%s stockpiles.csv"%(self.time)
+        
+        np.savetxt(stockpiles_file_path, piles_n.transpose(), delimiter=",",fmt='%d')
+        
+        destinations_file_path = "./results/%s destinations.csv"%(self.time)
+        
+        np.savetxt(destinations_file_path, destinations.transpose(), delimiter=",",fmt='%d')
+        
+        
+        
+        
 
 
 class Stockpile_sim(object):     
@@ -191,10 +232,10 @@ class Stockpile_sim(object):
     
     crusher_rate = 0 # blocks per time unit for crusher
 
-    build_av = None
-    build_cnt = None
-    build_bks = None
-    build_ind = None 
+    build_av = None  # average quality in current build
+    build_cnt = None # blocks in current build at a time step 
+    build_bks = None # sequence of blocks sent to builds
+    build_ind = None # is block in build from stock or dig unit
     nbuild_bks = 0 # number of blocks in all builds
     
     upper = None # absolute lowest grade of Fe for ore - cutoff grade - lower is treated as waste
@@ -202,12 +243,17 @@ class Stockpile_sim(object):
     
     build_start = None
     
+    sim_stats = None
+    
     def __init__(self, time_periods=40, starting_inventory_n=0, num_stockpiles=NUM_PILES, grade_target=55.0):
         """
         Destination problem simulation
-        """               
+        """
+        
+        self.sim_stats = sim_stats(time_periods)
+        
         self.ndiggers = 2 
-        self.nblocks = 11
+        self.nblocks = 7
         self.ntime = time_periods  
         
         self.npiles = num_stockpiles
@@ -221,10 +267,10 @@ class Stockpile_sim(object):
         # digger model                
         # mining sequence per dig unit
         self.diggers = self._load_digger_block_seq(self.ntime)
-        print self.diggers
+        #print self.diggers
         
         self.destinations = self._set_random_dest(self.ntime)
-        print self.destinations
+        #print self.destinations
         
         # crusher model
         # blocks to crush per time period (one crusher)
@@ -239,6 +285,7 @@ class Stockpile_sim(object):
 
 
         self.stockyard = Stockyard(self.low, self.high, self.npiles,self.ntime)
+        self.sim_stats = sim_stats(self.ntime)
 
            
         # state variables
@@ -247,6 +294,8 @@ class Stockpile_sim(object):
         self.build_cnt = np.zeros((1,self.ntime))        
         self.build_bks = np.zeros((1,self.ntime*self.ndiggers))  
         self.build_ind = np.zeros((1,self.ntime*self.ndiggers)) # % 1 if from build, 0 otherwise
+            
+        
         self.upper = np.zeros((1,self.ntime))
         self.lower = np.zeros((1,self.ntime))         
         self.build_start = np.zeros((1,1)) # time step when builds were started
@@ -282,7 +331,7 @@ class Stockpile_sim(object):
         return block_destinations
     
     def set_destinations(self, digger, array):
-        print "<><><> set destinations <><><>"        
+        #print "<><><> set destinations <><><>"        
         self.destinations[digger,:] = array
         
 
@@ -304,9 +353,10 @@ class Stockpile_sim(object):
         #self.reset()
         tt=0
         build_n = 0 # blocks in a current build
+        build_number = 0 # the index of the build
         
         while (tt < self.ntime):
-            print "time step: "+str (tt)
+            #print "time step: "+str (tt)
             
             if (tt > 0):
                 self.build_av[:,tt] = self.build_av[:,tt-1]
@@ -318,7 +368,7 @@ class Stockpile_sim(object):
                 
                 block = self.diggers[jj,tt]
                 
-                print "digger: "+str(jj) +"\t" + "block Q: "+ str(block) 
+                #print "digger: "+str(jj) +"\t" + "block Q: "+ str(block) 
                 
                 # if not waste
                 if(block >= self.low):
@@ -330,21 +380,22 @@ class Stockpile_sim(object):
                     else: 
                         self.upper[0,tt] = self.nblocks*self.target - build_n*self.build_av[0,tt] - (self.nblocks - build_n-1)*self.low
                         self.lower[0,tt] = self.nblocks*self.target - build_n*self.build_av[0,tt] - (self.nblocks - build_n-1)*self.high           
-                    print "accept: "+str(self.lower[:,tt] ) +" \t"+str(self.upper[:,tt]) 
-                    print "dest to crusher: "+ str(self.destinations[jj,tt] ==0)
+                    #print "accept: "+str(self.lower[:,tt] ) +" \t"+str(self.upper[:,tt]) 
+                    #print "dest to crusher: "+ str(self.destinations[jj,tt] ==0)
                     
                     
                     # Decide whether to send to a stockpile or to the crusher  
                     # comment out one of the methods (either the business logic thresholds or the bit string logic)
                     if self.destinations[jj,tt] == 0 :                                                                      
                     #if (block >= self.lower[:,tt] and block <= self.upper[:,tt]) : # send to crusher (build)                                  
-                        print "send to crusher"
-                        print "build_n: "+str(build_n)
+                        #print "send to crusher"
+                        #print "build_n: "+str(build_n)
                                 
                         # check if a new build is to be started (build size = 20)
                         if (build_n is self.nblocks):
                             build_n = 0
                             self.build_start = np.append(self.build_start, tt)
+                            build_number = build_number +1
         
                         build_n = build_n + 1
                         
@@ -361,29 +412,36 @@ class Stockpile_sim(object):
                         self.build_ind[0,self.nbuild_bks] = 1 # TODO check this shouldn't it be the index of the build?
                         
                         self.build_cnt[0,tt] = self.build_cnt[0,tt] + 1
+                        
+                        # stats -  direct feed to crusher block sent from dig unit in pit to build  
+                        self.sim_stats.add_row(tt, self.target, build_number, build_n, block, self.build_av[0,tt] ,0 ,jj)
+                        
+                        
         
                     else: # send to stockpile - ROM pad               
                         pile_index = self.stockyard.add_block(block, tt)
-                        print "***"
-                        print "stocks"
-                        print self.stockyard.stocks
-                        print (("Send block to stockpile: %s %s"),block, pile_index)
-                        print "updated stocks"
-                        print self.stockyard.stocks
-                        print "***"
+                        #print "***"
+                        #print "stocks"
+                        #print self.stockyard.stocks
+                        #print (("Send block to stockpile: %s %s"),block, pile_index)
+                        #print "updated stocks"
+                        #print self.stockyard.stocks
+                        #print "***"
                 else:
-                    print "Send to waste dump"
+                    # do nothing - waste
+                    pass
+                    #print "Send to waste dump"
                 
             # Keep crusher feed running from stockpile if necessary - ie keep crusher fully utilised       
             for kk in range(0,self.crusher_rate - self.build_cnt[:,tt]):
-                print "reclaim"
+                #print "reclaim"
                 
                 new_grade = (build_n+1) * self.target - build_n * self.build_av[0,tt]
-                print "new grade: "+str(new_grade)
+                #print "new grade: "+str(new_grade)
                 # take block from stockpile
-                grade = self.stockyard.get_block(new_grade, tt)
-                print "available grade: " +str (grade)
-                print self.stockyard.stocks
+                grade, pile_ind = self.stockyard.get_block(new_grade, tt)
+                #print "available grade: " +str (grade)
+                #print self.stockyard.stocks
                 
                 if (grade is not None):
                                             
@@ -396,10 +454,10 @@ class Stockpile_sim(object):
                     if (build_n is self.nblocks):
                         build_n = 0
                         self.build_start = np.append(self.build_start, tt)
+                        build_number = build_number +1
                                             
                     build_n = build_n + 1
                     # calculate the average quality value of the build - ie before a block is added
-                    # TODO this seems to set av too low
                     if (build_n is 1): # first block
                         self.build_av[0,tt] = grade              
                     else: # blocks 2 - number of blocks (20)
@@ -410,6 +468,8 @@ class Stockpile_sim(object):
                     self.build_bks[0,self.nbuild_bks] = grade
                         
                     self.build_cnt[0,tt] = self.build_cnt[0,tt] + 1
+                    
+                    self.sim_stats.add_row(tt, self.target, build_number, build_n, grade, self.build_av[0,tt] , 1,pile_ind)
                     
             tt = tt + 1
         self.build_start = np.append(self.build_start, self.ntime)
@@ -422,39 +482,47 @@ class Stockpile_sim(object):
         for ii in range(1,np.shape(self.build_start)[0]):
             serror += math.pow((self.build_av[0, int(self.build_start[ii])-1 ] - self.target ), 2)
         
-        penalty =   self.stockyard.piles_n[0,self.ntime-1]
+        penalty =   0#self.stockyard.piles_n[0,self.ntime-1] 
         
         serror += penalty
             
         return serror   
-  
+              
         
+    
     def plot_summary(self):
         
-        print "plot_summary"
+        self.sim_stats.print_table(self.stockyard.piles_n,self.destinations)
+        #print "plot_summary"
         
         fig1 = plt.figure()
         ax1 = fig1.add_subplot(211)
         ax2 = fig1.add_subplot(212)
         
-        print np.shape(self.build_start)[0]
+        #print np.shape(self.build_start)[0]
         
         for ii in range(1,np.shape(self.build_start)[0]):
-            indices = np.linspace(self.build_start[ii-1] + 1,self.build_start[ii]-1,self.nblocks/2)            
-            
-            print indices
+                                   
+            indices = np.linspace(self.build_start[ii-1] + 1,self.build_start[ii]-1,self.nblocks/2)                                    
             c = np.cumsum(self.build_bks[:,(ii-1)*self.nblocks +1 : (ii*self.nblocks)+1]  )
 
-            print "***"
-            print (ii-1)*self.nblocks  + 1
+            
+            print "***" 
+            print indices
+            print (ii-1)*self.nblocks + 1
             print (ii*self.nblocks)+1
-            print np.cumsum(self.build_bks[:,(ii-1)*self.nblocks +1: (ii*self.nblocks)+1]  )
-            print "***"
+            print c
+
                         
             c = c[np.arange(1,self.nblocks,2)]
             print c
-            print np.arange(2,self.nblocks,2)
+            #print np.arange(2,self.nblocks,2)
             ba = np.divide(c,np.arange(2,self.nblocks,2))
+            
+            print np.arange(2,self.nblocks,2)
+            print ba
+            
+            print "***"
             
             ax1.plot(indices,self.target*np.ones(np.shape(indices)),color = 'k')
             ax1.plot(indices, ba, color = 'k')
@@ -477,4 +545,9 @@ def test():
     s.run()
     s.plot_summary()
     return s
+    
+import pickle
+def stuff():
+    with open('result2.pickle','wb') as handle:
+        pickle.dump(result[2], handle)
     
