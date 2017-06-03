@@ -5,21 +5,6 @@ Created on Tue May 23 15:27:48 2017
 @author: ag
 """
 
-#    This file is part of DEAP.
-#
-#    DEAP is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU Lesser General Public License as
-#    published by the Free Software Foundation, either version 3 of
-#    the License, or (at your option) any later version.
-#
-#    DEAP is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-#    GNU Lesser General Public License for more details.
-#
-#    You should have received a copy of the GNU Lesser General Public
-#    License along with DEAP. If not, see <http://www.gnu.org/licenses/>.
-
 import random
 
 import numpy
@@ -74,7 +59,7 @@ def cxTwoPointCopy(ind1, ind2):
     
 toolbox.register("evaluate", utils.evaluate_destinations)
 toolbox.register("mate", cxTwoPointCopy)
-toolbox.register("mutate", tools.mutFlipBit, indpb=0.05)
+toolbox.register("mutate", tools.mutFlipBit, indpb=0.025)
 toolbox.register("select", tools.selTournament, tournsize=3)
 
 def ea_runner():

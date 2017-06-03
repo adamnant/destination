@@ -473,16 +473,16 @@ class Stockpile_sim(object):
                     
             tt = tt + 1
         self.build_start = np.append(self.build_start, self.ntime)
-        return self.eval()
+        return self.eval(build_number)
         
 
-    def eval(self):
+    def eval(self,k):
 
         serror = 0
         for ii in range(1,np.shape(self.build_start)[0]):
             serror += math.pow((self.build_av[0, int(self.build_start[ii])-1 ] - self.target ), 2)
         
-        penalty =   0#self.stockyard.piles_n[0,self.ntime-1] 
+        penalty =   self.stockyard.piles_n[0,self.ntime-1] #- k
         
         serror += penalty
             

@@ -74,12 +74,22 @@ def get_small_example():
     np.savetxt("dig_seq.csv",digger, delimiter=",",newline="\n")
     return digger
 
+def get_long_sequence():
+    
+    np.random.seed(seed=42)
+    digger = np.random.rand(1,500)*15 + 49
+    np.savetxt("dig_seq.csv",digger, delimiter=",",newline="\n")
+    return         
+                
+
 
 def test():
-    get_small_example()
+    #get_small_example()
+    get_long_sequence()
     data = np.genfromtxt ('dig_seq.csv', delimiter=",")
 
-    ntime = 40
+    #ntime = 40
+    ntime=500
     seq = np.concatenate((\
                 np.zeros((1,ntime)),\
                 np.zeros((1,ntime)),\
