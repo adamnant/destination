@@ -2,6 +2,8 @@
 """
 Created on Mon May 22 13:56:34 2017
 
+Methods to set digging sequence
+
 @author: ag
 """
 import os
