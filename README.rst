@@ -40,4 +40,4 @@ dig_seq.csv contains a dig sequence from small_example able to be read by the si
 
 Configuration
 =============
-Currently configurations are set in the code (they would in the future be set to use a config file and suitable comments included).
+Currently configurations are only set in the code.
