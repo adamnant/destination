@@ -1,13 +1,12 @@
 from setuptools import setup
 
-__version__ = "0.01"
+__version__ = "0.1"
 
 core_libs = ['numpy',
                  'networkx',
                  'matplotlib',
                  'begins',
-                 'deap',
-                 'random']              
+                 'deap']              
 
 setup(
     name='destination_problem',
