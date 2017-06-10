@@ -30,7 +30,7 @@ class Stockyard(object):
     npiles = 0 # number of rehandle stockpiles
     piles_n = None # number of blocks on stockpiles at timestep n     
     
-    def __init__(self,low, high, num_piles,ntime, s_capacity=4):
+    def __init__(self,low, high, num_piles,ntime, s_capacity=3):
         
         self.ntime = ntime
         self.piles = np.array(range (num_piles))
@@ -77,7 +77,27 @@ class Stockyard(object):
                                        [54,57],\
                                        [57,60],\
                                        [61,63],\
-                                       [64,66]])
+                                       [64,66]])                                     
+#
+#                                       [45,51],\
+#                                       [51,54],\
+#                                       [54,57],\
+#                                       [57,60],\
+#                                       [61,63],\
+#                                       [64,66],\
+#                                       [45,51],\
+#                                       [51,54],\
+#                                       [54,57],\
+#                                       [57,60],\
+#                                       [61,63],\
+#                                       [64,66],\
+#                                       [45,51],\
+#                                       [51,54],\
+#                                       [54,57],\
+#                                       [57,60],\
+#                                       [61,63],\
+#                                       [64,66]] )
+                                       
         # sort by the lower threshold:
         self.stocks_limits = self.stocks_limits[self.stocks_limits[:,0].argsort()]                              
         # min = 55, max = 66
@@ -482,7 +502,7 @@ class Stockpile_sim(object):
         for ii in range(1,np.shape(self.build_start)[0]):
             serror += math.pow((self.build_av[0, int(self.build_start[ii])-1 ] - self.target ), 2)
         
-        penalty =   self.stockyard.piles_n[0,self.ntime-1] #- k
+        penalty =   self.stockyard.piles_n[0,self.ntime-1] - k
         
         serror += penalty
             

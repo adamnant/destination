@@ -77,7 +77,7 @@ def get_small_example():
 def get_long_sequence():
     
     np.random.seed(seed=42)
-    digger = np.random.rand(1,500)*15 + 49
+    digger = np.random.rand(1,500)*15 + 45
     np.savetxt("dig_seq.csv",digger, delimiter=",",newline="\n")
     return         
                 
@@ -123,51 +123,3 @@ def test():
     print seq[0,:]
     
     print type (data)
-
-######################
-#    
-#A = block_data_z_x_y();
-#
-#
-#%ii = randperm(n);
-#%A = A(ii,:);
-#
-#A_prec = zeros(n,n);
-#
-#for ii = 1:n
-#    for jj = 1:n
-#        A_prec(ii,jj) = above(A(ii,2:4),A(jj,2:4));
-#    end
-#end
-#
-#close all
-#figure(1)
-#hold on 
-#
-#for ii = 1:n
-#    
-#    if (A(ii,7) <= 55)
-#        col = 0.5*[1 1 1];
-#    else
-#        col = [1 0 0];
-#    end
-#    
-#    plotcube(edges,[A(ii,2), A(ii,3), A(ii,4)]-edges/2, 0.5, col);
-#        
-#end
-#
-#mine_order = graphtopoorder(sparse(A_prec));
-#
-#for ii = 1:(n-1)
-#    
-#    index1 = mine_order(ii);
-#    index2 = mine_order(ii+1);
-#    
-#    B = [A(index1,2:4); A(index2,2:4)];
-#    
-#    plot3(B(:,1), B(:,2), B(:,3),'k');
-#    
-#end
-#
-#view(48,24)
-#hold off
