@@ -7,7 +7,7 @@ Created on Tue May 16 15:04:41 2017
 import random
 import numpy as np
 
-import sim_eval as sim
+import ea.sim_eval as sim
 
 class MyContainer(np.ndarray):
     # This class does not require the fitness attribute
@@ -107,9 +107,9 @@ def get_best(pop):
     fit = 101
     ii=0
     for ind in range(len(pop)):
-        print pop[ind].fitness.values[0]        
+        print ( pop[ind].fitness.values[0])
         if fit < pop[ind].fitness.values[0]:
-            print pop[ind].fitness.values[0]
+            print (pop[ind].fitness.values[0])
             ii = ind
     return ii
     

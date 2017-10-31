@@ -5,11 +5,12 @@ Created on Tue May 23 15:27:48 2017
 @author: ag
 """
 
+
 import random
 
 import numpy
 
-import utils
+import ea.utils as utils
 
 from deap import algorithms
 from deap import base

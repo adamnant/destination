@@ -311,9 +311,9 @@ class Stockpile_sim(object):
         # state variables
     
         self.build_av = np.zeros((1,self.ntime))
-        self.build_cnt = np.zeros((1,self.ntime))        
-        self.build_bks = np.zeros((1,self.ntime*self.ndiggers))  
-        self.build_ind = np.zeros((1,self.ntime*self.ndiggers)) # % 1 if from build, 0 otherwise
+        self.build_cnt = np.zeros((1,self.ntime), dtype=np.int8)
+        self.build_bks = np.zeros((1,self.ntime*self.ndiggers), dtype=np.int8)
+        self.build_ind = np.zeros((1,self.ntime*self.ndiggers), dtype=np.int8) # % 1 if from build, 0 otherwise
             
         
         self.upper = np.zeros((1,self.ntime))
@@ -371,7 +371,7 @@ class Stockpile_sim(object):
 
     def run(self):
         #self.reset()
-        tt=0
+        tt = 0
         build_n = 0 # blocks in a current build
         build_number = 0 # the index of the build
         
@@ -453,7 +453,7 @@ class Stockpile_sim(object):
                     #print "Send to waste dump"
                 
             # Keep crusher feed running from stockpile if necessary - ie keep crusher fully utilised       
-            for kk in range(0,self.crusher_rate - self.build_cnt[:,tt]):
+            for kk in range(0,self.crusher_rate - self.build_cnt[0, tt]):
                 #print "reclaim"
                 
                 new_grade = (build_n+1) * self.target - build_n * self.build_av[0,tt]
@@ -527,22 +527,22 @@ class Stockpile_sim(object):
             c = np.cumsum(self.build_bks[:,(ii-1)*self.nblocks +1 : (ii*self.nblocks)+1]  )
 
             
-            print "***" 
-            print indices
-            print (ii-1)*self.nblocks + 1
-            print (ii*self.nblocks)+1
-            print c
+            #print "***"
+            #print indices
+            #print (ii-1)*self.nblocks + 1
+            #print (ii*self.nblocks)+1
+            #print c
 
                         
             c = c[np.arange(1,self.nblocks,2)]
-            print c
+            print (c)
             #print np.arange(2,self.nblocks,2)
             ba = np.divide(c,np.arange(2,self.nblocks,2))
             
-            print np.arange(2,self.nblocks,2)
-            print ba
+            #print np.arange(2,self.nblocks,2)
+            #print ba
             
-            print "***"
+            #print "***"
             
             ax1.plot(indices,self.target*np.ones(np.shape(indices)),color = 'k')
             ax1.plot(indices, ba, color = 'k')
@@ -566,8 +566,8 @@ def test():
     s.plot_summary()
     return s
     
-import pickle
-def stuff():
-    with open('result2.pickle','wb') as handle:
-        pickle.dump(result[2], handle)
+#import pickle
+#def stuff():
+#    with open('result2.pickle','wb') as handle:
+#        pickle.dump(result[2], handle)
     
