@@ -17,7 +17,7 @@ to stockpile or process the ore at each time step, 0 is interpreted as to proces
 """
 import random
 import numpy
-import ea.utils as utils
+import optimiser.utils as utils
 from deap import algorithms
 from deap import base
 from deap import creator
@@ -69,11 +69,5 @@ def ea_runner(pop_size=100,
 
     # return p,l,hof
     return pop, stats, hof
-
-
-
-
-
-
 
 

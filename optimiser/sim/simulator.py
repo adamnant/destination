@@ -5,235 +5,17 @@ Created on Mon May  1 14:50:35 2017
 @author: ag
 """
 
-import numpy as np 
 import math
+
 import matplotlib.pyplot as plt
-import sys
+import numpy as np
 
-import os
-from datetime import datetime
-
-NUM_PILES = 7
-DATAFILE_PATH = "data/"
-
-class Stockyard(object):
-    ntime = 0    
-    
-    stocks = None # the actual blocks - a list of stacks - one for each stockpile
-    stocks_limits = None # array - for each stockpile [[s1 l,s1 h,s1 m],... ]
-    
-
-    piles = None # rehandle stockpiles
-    stockpile_state = None # stockpile build model - indicates whether stockyard is in build or destroy mode  
-    stockpile_capacity = 4
-    
-    npiles = 0 # number of rehandle stockpiles
-    piles_n = None # number of blocks on stockpiles at timestep n     
-    
-    def __init__(self,low, high, num_piles,ntime, s_capacity=3):
-        
-        self.ntime = ntime
-        self.piles = np.array(range (num_piles))
-        self.npiles = len (self.piles)
-        
-        self.piles_n = np.zeros((self.npiles,self.ntime)) # variable to store number of blocks in each stockpile at each timestep in the sim
-        self.piles_n[0:self.npiles,0] = 0 # set starting stockpile inventory   
-        
-        # list of empty stacks: empty stockpiles
-        self.stocks = [[] for i in range(num_piles)] #a = [[0] * number_cols for i in range(number_rows)]
-        #self.example_thresholds()
-        self.stockpile_state = [1 for i in range(num_piles)] # 1 means pile is in build mode
-        self.stockpile_capacity = s_capacity
-        
-        
-
-    def set_thresholds_ea(self, thresholds):
-        #print "set_thresholds_ea" 
-        #print thresholds
-        # get an ndarray
-        #self.npiles = NUM_PILES
-        self.stocks_limits = np.zeros((self.npiles,2))
-        # zeroth pile is not used so just set to zero
-        self.stocks_limits[0,0] = 0.0
-        self.stocks_limits[0,1] = 0.0
-        
-        for i in range(1,self.npiles):
-            self.stocks_limits[i,0] = thresholds[i-1,0]
-            self.stocks_limits[i,1] = thresholds[i-1,1]
-        self.stocks_limits = self.stocks_limits[self.stocks_limits[:,0].argsort()] 
-        #print self.stocks_limits
-        
+from configuration import config_obj
+import simstats
+import stockyard
 
 
-
-    def set_example_thresholds(self):
-        #self.npiles = NUM_PILES
-        self.stocks_limits = np.zeros((self.npiles,2))
-        # pile zero is default catch all pile / dump - not used to reclaim
-        self.stocks_limits = np.array([\
-                                       [0,0],\
-                                       [48,51],\
-                                       [51,54],\
-                                       [54,57],\
-                                       [57,60],\
-                                       [61,63],\
-                                       [64,66]])                                     
-#
-#                                       [45,51],\
-#                                       [51,54],\
-#                                       [54,57],\
-#                                       [57,60],\
-#                                       [61,63],\
-#                                       [64,66],\
-#                                       [45,51],\
-#                                       [51,54],\
-#                                       [54,57],\
-#                                       [57,60],\
-#                                       [61,63],\
-#                                       [64,66],\
-#                                       [45,51],\
-#                                       [51,54],\
-#                                       [54,57],\
-#                                       [57,60],\
-#                                       [61,63],\
-#                                       [64,66]] )
-                                       
-        # sort by the lower threshold:
-        self.stocks_limits = self.stocks_limits[self.stocks_limits[:,0].argsort()]                              
-        # min = 55, max = 66
-        # self.stocks_limits = np.array([60,61,62,63,65]) 
-            
-    def example_even_spaced_stockpile_thresholds(self, low, high, num_piles):
-        # thresholds to accept material
-        self.stocks_limits = np.zeros((num_piles,2))  
-        
-        step = float((high - low)/num_piles)
-             
-        s_low = float(low)
-        s_high = float(s_low + step)
-        
-        for i in range(num_piles):
-            self.stocks_limits[i] = [s_low,s_high]
-            s_low += step
-            s_high += step
-        
-
-    def update_trackers(self, tt):
-        self.piles_n[:,tt] = self.piles_n[:,tt-1]
-        
-        
-    def add_block(self, block, tt):
-        # get stockpile index
-        # pile zero is default catch all pile / dump 
-        # can set to -1 if not using catch all pile and raise exception or define other behaviour
-
-        assert len(self.stocks) == len(self.stocks_limits), "%s %s" % (len(self.stocks) ,len(self.stocks_limits))
-        
-        pile_index = 0
-        for ind in range(1,len(self.stocks)):
-            if ( block >= self.stocks_limits[ind][0] and block < self.stocks_limits[ind][1] ) :
-                if (self.stockpile_state[ind] > 0): # is pile is in build state
-                    pile_index = ind
-                    break
-
-#        if pile_index is -1:
-#            pile_index = 0            
-#             raise Exception (("can't find stockpile for grade %s"), block) 
- #       else:
-
-        self.stocks[pile_index].append(block)
-        self.piles_n [pile_index,tt] = self.piles_n [pile_index,tt] + 1
-        
-        # update build state
-        if ( len(self.stocks[pile_index]) >= self.stockpile_capacity ):
-            self.stockpile_state[ind] = 0 # set pile to reclaim state
-        
-        return pile_index
-
-    def available_stocks(self):
-        av = []
-        # pile zero is currently a catch all pile / dump - not used to reclaim just to track blocks that fall through thresholds as defined in stockpile list
-        for i in range(1,len(self.stocks)) :
-            if len(self.stocks[i]) > 0 and self.stockpile_state[i] == 0: # are stocks and pile is in reclaim mode
-                av.append(i)
-        return av
-            
-    def get_block(self, target_grade, tt):
-        # which stockpiles have material?
-        available = self.available_stocks()
-        # if no stocks at all just return None
-        if not available:
-            return None, -1
-              
-        # Try to find a block with the lowest level above the target grade ie compare to min threshold 
-        # otherwise return the highest grade available to try to keep crushers running
-        # also note available is assumed in order of lowest to highest grade stockpile
-              
-        for pile_ind in available :
-            if self.stocks_limits[pile_ind][0] >= target_grade:
-                block = self.stocks[pile_ind].pop() 
-                self.piles_n [pile_ind,tt] = self.piles_n [pile_ind,tt] - 1
-   
-                # update state to build if pile has become empty (build destroy logic)
-                if len(self.stocks[pile_ind]) == 0:
-                    self.stockpile_state[pile_ind] = 1
-                                            
-                
-                return block, pile_ind
-        
-        # didn't find a block above the target quality so return highest grade available which is the highest index in available if stockpiles
-        # are indexed in order of 
-        pile_ind = available[len(available)-1]
-        block = self.stocks[pile_ind].pop() 
-        self.piles_n [pile_ind,tt] = self.piles_n [pile_ind,tt] - 1
-
-        # update state to build mode in case any pile has become empty ( build destroy logic)        
-        if len(self.stocks[pile_ind]) == 0:
-            self.stockpile_state[pile_ind] = 1
-        
-        return block    ,pile_ind             
-                
-
-class sim_stats:
-
-    # builds
-    # 1 time, 2 target, 3 build index, 4 num blocks in build,  5 block qual, 
-    # 6 csum block qual, 7 source (pit 0, stockpile 1)    
-            
-    table = None
-    def __init__(self, ntime):
-        #self.table = np.zeros((ntime,8))
-        self.table = []
-        self.time = datetime.now().strftime("%Y%m%d_%H%M%S")
-        self.file_path = "./results/%s build.csv"%(self.time)
-        self.directory = os.path.dirname(self.file_path)
-
-        try:
-            os.stat(self.directory)
-        except:
-            os.mkdir(self.directory)  
-    
-    def add_row(self, time, target, bld_ind, build_n, block_q, build_avg, block_src, digger_pile_index):
-        self.table.append((time, target, bld_ind, build_n, block_q, build_avg, block_src,digger_pile_index))
-        
-    def print_table(self, piles_n,destinations):
-        build = np.reshape(self.table, newshape=(len(self.table), 8))
-        np.savetxt(self.file_path, build, delimiter=",",fmt='%.2f')
-        
-        stockpiles_file_path = "./results/%s stockpiles.csv"%(self.time)
-        
-        np.savetxt(stockpiles_file_path, piles_n.transpose(), delimiter=",",fmt='%d')
-        
-        destinations_file_path = "./results/%s destinations.csv"%(self.time)
-        
-        np.savetxt(destinations_file_path, destinations.transpose(), delimiter=",",fmt='%d')
-        
-        
-        
-        
-
-
-class Stockpile_sim(object):     
+class Simulator(object):
     
     # simulation variables
     
@@ -265,12 +47,12 @@ class Stockpile_sim(object):
     
     sim_stats = None
     
-    def __init__(self, time_periods=40, starting_inventory_n=0, num_stockpiles=NUM_PILES, grade_target=55.0):
+    def __init__(self, time_periods=40, starting_inventory_n=0, num_stockpiles=int(str(config_obj.sim.num_stockpiles)), grade_target=55.0):
         """
         Destination problem simulation
         """
         
-        self.sim_stats = sim_stats(time_periods)
+        self.sim_stats = simstats.SimStats(time_periods)
         
         self.ndiggers = 2 
         self.nblocks = 7
@@ -303,13 +85,10 @@ class Stockpile_sim(object):
         # stockpile model
         # initially use one stockpile for each integer grade in the range
 
+        self.stockyard = stockyard.Stockyard(self.low, self.high, self.npiles,self.ntime)
+        self.sim_stats = simstats.SimStats(self.ntime)
 
-        self.stockyard = Stockyard(self.low, self.high, self.npiles,self.ntime)
-        self.sim_stats = sim_stats(self.ntime)
-
-           
         # state variables
-    
         self.build_av = np.zeros((1,self.ntime))
         self.build_cnt = np.zeros((1,self.ntime), dtype=np.int8)
         self.build_bks = np.zeros((1,self.ntime*self.ndiggers), dtype=np.int8)
@@ -321,7 +100,7 @@ class Stockpile_sim(object):
         self.build_start = np.zeros((1,1)) # time step when builds were started
         self.nbuild_bks=0 # blocks in builds
 
-    def _load_digger_block_seq(self, ntime, filename =DATAFILE_PATH + 'dig_seq.csv'):
+    def _load_digger_block_seq(self, ntime, filename = './data/dig_seq.csv'):
         data = np.genfromtxt (filename, delimiter=",")
         
         seq = np.concatenate((\
@@ -554,7 +333,7 @@ class Stockpile_sim(object):
     #np.savetxt("stockpiles.csv", piles_n, delimiter=",",fmt='%i')
     
 def test():
-    s = Stockpile_sim()
+    s = Simulator()
     s.reset()
     s.stockyard.set_example_thresholds()
     s.set_destinations(1,np.random.randint(2, size=(1, 40)) )

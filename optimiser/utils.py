@@ -9,7 +9,7 @@ Some utility functions required by the evolutionary algorithm as it is specified
 """
 import random
 import numpy as np
-import ea.sim.sim_eval as sim
+import optimiser.sim.simulator as sim
 
 
 class MyContainer(np.ndarray):
@@ -88,7 +88,7 @@ def cxTwoPointCopy(ind1, ind2):
     return ind1, ind2
 
 def evaluate(individual):
-    simulation = sim.Stockpile_sim(num_stockpiles = len(individual) )
+    simulation = sim.Simulator(num_stockpiles = len(individual))
     simulation.reset()
     simulation.stockyard.set_thresholds_ea(individual)
     fit = simulation.run()
@@ -97,7 +97,7 @@ def evaluate(individual):
 
 
 def evaluate_destinations(individual):
-    simulation = sim.Stockpile_sim()
+    simulation = sim.Simulator()
     simulation.reset()
     simulation.stockyard.set_example_thresholds()
     simulation.set_destinations(0,individual)
@@ -107,7 +107,7 @@ def evaluate_destinations(individual):
 
 
 def plot_sim_dest_individual(individual):
-    simulation = sim.Stockpile_sim()
+    simulation = sim.Simulator()
     simulation.reset()
     simulation.stockyard.set_example_thresholds()
     simulation.set_destinations(0,individual)
@@ -118,7 +118,7 @@ def plot_sim_dest_individual(individual):
 
 def plot_sim_threshold_individual(individual):
     
-    simulation = sim.Stockpile_sim(num_stockpiles = len(individual) )
+    simulation = sim.Simulator(num_stockpiles = len(individual))
     
     simulation.reset()
     simulation.stockyard.set_thresholds_ea(individual)

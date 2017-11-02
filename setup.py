@@ -6,13 +6,14 @@ core_libs = ['numpy',
                  'networkx',
                  'matplotlib',
                  'begins',
-                 'deap']              
+                 'deap',
+                 'funconf']
 
 setup(
     name='destination_problem',
     version=__version__,
     author='ag',
-    packages=['ea'],
+    packages=['optimiser'],
     include_package_data=True,
     description='some experiments on solving destination problem',
     entry_points={

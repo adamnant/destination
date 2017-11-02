@@ -7,9 +7,9 @@ Created on Sat Jun 10 23:28:27 2017
 #import os
 #__path__=[os.path.dirname(os.path.abspath(__file__))]
 
-import ea.destinations_ga as ga
-import ea.utils as utils
-
+import optimiser.run_ea as ga
+import optimiser.utils as utils
+from configuration import config_obj
 
 def main():
     """
@@ -17,6 +17,11 @@ def main():
     simulation of the best individual 
 
     """
+    print("***")
+    print(str(config_obj.sim.num_stockpiles))
+    print(str(config_obj.sim.data_file_path))
+
+
     res = ga.ea_runner()
     utils.plot_sim_dest_individual(res[2][0])
 

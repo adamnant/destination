@@ -10,20 +10,13 @@ from deap import tools
 
 creator.create("FitnessMin", base.Fitness, weights=(-1.0,))
 creator.create("Individual", utils.MyContainer, fitness=creator.FitnessMin)
-
 toolbox = base.Toolbox()
-
 toolbox.register("individual", utils.initIndividual, creator.Individual, size=16) # size is number of stockpile thresholds
-toolbox.register("population", tools.initRepeat, list, toolbox.individual)   
-
+toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 toolbox.register("clone", utils.clone)
-
-
 toolbox.register("mutate", utils.mutation)
 toolbox.register("mate", utils.crossover)
-
 toolbox.register("select",tools.selTournament, tournsize=3)
-
 toolbox.register("evaluate", utils.evaluate)
 
 
@@ -68,23 +61,23 @@ def main():
     return pop
 
 
-
+############################################
 #
-test_ind = toolbox.individual()
-test_ind2 = toolbox.individual()
-print type(test_ind)
-print test_ind
+#test_ind = toolbox.individual()
+#test_ind2 = toolbox.individual()
+#print type(test_ind)
+#print test_ind
 
-issubclass(type(test_ind), utils.MyContainer)
+#issubclass(type(test_ind), utils.MyContainer)
 
-test_ind.fitness.values = utils.evaluate(test_ind)
+#test_ind.fitness.values = utils.evaluate(test_ind)
 
 
 #toolbox.mutate(test_ind)
 #toolbox.mate(test_ind,test_ind2)
 
 #print "attr1 = %s"  % (test_ind.attr1)
-print test_ind.fitness.values
-#print  test_ind 
+#print test_ind.fitness.values
+#print  test_ind
 
 #...
