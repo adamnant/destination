@@ -4,7 +4,7 @@ Destination Problem Experiments
 
 Overview
 ========
-These scripts are some experiments and simulation of the open pit mine matereial destination problem.
+These scripts are some experiments and simulation of the open pit mine material destination problem.
 
 Pre-requisites
 ==============
@@ -24,14 +24,6 @@ Run python main.py
 Running the main function will run the evolutionary algorithm, save results in results directory labelled with the current date/time and plot a visualization of the result simulating the best individual found by the algorithm. To use the selection cone method the file ea/sim_eval.py must be edited manually (see notes in config below).
 
 
-Simulation and Algorithm
-===============
-The stockyard and mining simulation that results are based on is in ea/sim_eval.py
-The evolutionary algorithm is in ea/destinations_ga.py
-Some plotting, operators and other tools are in ea/utils.py
-To construct the digging sequence requires adaptation of methods get_small_example and long sequence in 
-the dig_sequence_utils.py
-
 Data
 ===============
 The datafile containing the small block model is in small_example.csv: Location in space is by
@@ -40,4 +32,4 @@ dig_seq.csv contains a dig sequence from small_example able to be read by the si
 
 Configuration
 =============
-Currently configurations are only set in the code.
+

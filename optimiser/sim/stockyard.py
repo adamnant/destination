@@ -12,11 +12,11 @@ class Stockyard(object):
     stocks = None  # the actual blocks - a list of stacks - one for each stockpile
     stocks_limits = None  # array - for each stockpile [[s1 l,s1 h,s1 m],... ]
 
-    piles = None  # rehandle stockpiles
+    piles = None  # re-handle stockpiles
     stockpile_state = None  # stockpile build model - indicates whether stockyard is in build or destroy mode
     stockpile_capacity = 4
 
-    npiles = 0  # number of rehandle stockpiles
+    npiles = 0  # number of re-handle stockpiles
     piles_n = None  # number of blocks on stockpiles at timestep n
 
     def __init__(self, low, high, num_piles, ntime, s_capacity=3):
