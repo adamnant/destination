@@ -6,7 +6,6 @@ Stockyard model
 """
 
 import numpy as np
-#NUM_STOCKPILES = 7
 
 class Stockyard(object):
     ntime = 0

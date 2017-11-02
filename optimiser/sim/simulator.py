@@ -326,7 +326,7 @@ class Simulator(object):
         plt.legend(self.stockyard.piles, ncol=4, loc='lower right', 
                    bbox_to_anchor=[1.0, -0.5],borderaxespad=1)
         plt.subplots_adjust(left=0.07, bottom=0.15, right=0.96, top=0.96, wspace=0.17, hspace=0.17)
-        fig1.savefig("output.png", bbox_inches="tight")
+        fig1.savefig("results/output.png", bbox_inches="tight")
         plt.show()
     
     
